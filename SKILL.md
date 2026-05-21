@@ -8,12 +8,14 @@ description: GitHub repo creation, branch protection, committing, WIP PRs, and m
 Default to feature branches and PRs. Work directly on `main` only when the user
 explicitly asks for it, or after asking and receiving clear approval.
 
-Keep local commits separate from publishing. The agent may create local commits
-when the task calls for it, but the user handles `git push` unless pushing was
-explicitly discussed and approved for this task or session.
+Push rules depend on the branch:
 
-Never merge, push to `main`, bypass branch protection, or self-merge without the
-user explicitly asking.
+- **Feature branch (PR)**: commit and push freely, including to create the branch
+  and open the PR. Each commit gets pushed.
+- **Main**: commit freely, but never push. The user controls when main gets
+  published.
+- **Merge**: only with explicit user approval. Never self-merge or bypass branch
+  protection.
 
 ## Repo Exposure
 
@@ -114,11 +116,16 @@ EOF
 )"
 ```
 
-Commit when it creates a useful checkpoint. Use concise commit messages that
+Commit as you go — after each logical piece of work, while the changes are
+still in context. This is more token-efficient than coming back later and
+re-reading files to reconstruct what changed. Push immediately on feature
+branches.
+
+Use concise commit messages that
 match the repo style.
 
-The user handles `git push` manually unless pushing was explicitly discussed and
-approved for this task or session.
+On feature branches, push after each commit. On `main`, the user handles
+`git push`.
 
 ## Feature Branches and WIP PRs
 
@@ -127,7 +134,7 @@ git checkout -b feature/my-thing
 # work, commit
 ```
 
-Push only after user approval:
+Push the branch and open a PR:
 
 ```sh
 git push -u origin feature/my-thing
@@ -139,8 +146,7 @@ checklist below. Preserve the branch tip before rebasing or merging so the work
 can be recovered if GitHub, a merge command, or branch cleanup behaves
 unexpectedly.
 
-Open a draft PR when the user asks for a PR workflow or approves publishing the
-branch:
+Open a draft PR after pushing the branch:
 
 ```sh
 gh pr create \
