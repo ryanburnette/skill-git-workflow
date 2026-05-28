@@ -3,6 +3,18 @@ name: git-workflow
 description: GitHub repo creation, branch protection, committing, WIP PRs, and merging. Use when creating a GitHub repo, starting a feature branch, managing PRs, or merging into main.
 ---
 
+## Repo Temp Directory
+
+Every repo has `./tmp/` gitignored. Write temp files to `./tmp/` (not `/tmp/`).
+This keeps temp files repo-scoped, avoids system temp collisions, and makes
+file paths relative and predictable.
+
+Ensure `.gitignore` contains:
+
+```
+tmp/
+```
+
 ## Core Policy
 
 Default to feature branches and PRs. Work directly on `main` only when the user
@@ -146,12 +158,13 @@ checklist below. Preserve the branch tip before rebasing or merging so the work
 can be recovered if GitHub, a merge command, or branch cleanup behaves
 unexpectedly.
 
-Open a draft PR after pushing the branch:
+Open a draft PR after pushing the branch. Write the body to a file and use
+`--body-file` to avoid quoting issues (heredocs inside `--body` clash with
+single quotes in the content):
 
 ```sh
-gh pr create \
-  --title "WIP: my thing" \
-  --body "$(cat <<'EOF'
+mkdir -p ./tmp
+cat > ./tmp/pr-body.md <<'EOF'
 ## What
 
 Brief description.
@@ -161,17 +174,19 @@ Brief description.
 - [x] Initial scaffolding
 - [ ] Tests
 EOF
-)" \
+gh pr create \
+  --title "WIP: my thing" \
+  --body-file ./tmp/pr-body.md \
   --draft
 ```
 
-Update the PR description as work progresses:
+Update the PR description as work progresses using the same pattern:
 
 ```sh
-gh pr edit <number> --body "$(cat <<'EOF'
+cat > ./tmp/pr-body.md <<'EOF'
 updated body...
 EOF
-)"
+gh pr edit <number> --body-file ./tmp/pr-body.md
 ```
 
 ## Force Pushes Require User Confirmation
@@ -367,3 +382,19 @@ Closes #6"
 ```
 
 This automatically closes the issue when pushed to main.
+
+**Create issues using `--body-file`.** Write the body to `./tmp/` and pass
+`--body-file` to `gh issue create`. This avoids quoting problems when the
+body contains single quotes (common in YAML, code blocks, or file paths):
+
+```sh
+mkdir -p ./tmp
+cat > ./tmp/issue-body.md <<'EOF'
+## Description
+
+The queries path `../db/sql/queries/` resolves incorrectly...
+EOF
+gh issue create \
+  --title "bug: description" \
+  --body-file ./tmp/issue-body.md
+```
