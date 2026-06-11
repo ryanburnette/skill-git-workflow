@@ -3,23 +3,14 @@ name: git-workflow
 description: GitHub repo creation, branch protection, committing, WIP PRs, and merging. Use when creating a GitHub repo, starting a feature branch, managing PRs, or merging into main.
 ---
 
-## Repo Temp Directory
-
-Every repo has `./tmp/` gitignored. Write temp files to `./tmp/` (not `/tmp/`).
-This keeps temp files repo-scoped, avoids system temp collisions, and makes
-file paths relative and predictable.
-
-Ensure `.gitignore` contains:
-
-```
-tmp/
-```
-
 ## Core Policy
 
 Default to feature branches and PRs. Work directly on `main` only when the
 user explicitly says so or the repo instructions specify it (e.g.
-`bypass_private_pr: always`).
+`bypass_private_pr: always`). Otherwise, create a feature branch.
+
+For public upstream work that should stay private, use a private working repo
+or mirror branch and ask before exposing it publicly.
 
 Push rules depend on the branch:
 
@@ -27,6 +18,10 @@ Push rules depend on the branch:
 - **Main**: commit after each logical piece of work, but never push.
 - **Merge**: only with explicit user approval. Never self-merge or bypass branch
   protection.
+
+Before changing branches, rebasing, stashing, or doing any operation that could
+affect unrelated work, inspect the worktree. If there are unrelated uncommitted
+changes, ask before proceeding.
 
 ## Repo Exposure
 
@@ -43,21 +38,6 @@ or detached private working repo.
 
 If repo visibility or desired exposure is unclear, ask before pushing or opening
 a PR.
-
-## Branching Defaults
-
-Use this decision order:
-
-1. If the user explicitly says to work on `main`, work on `main`.
-2. If repo instructions specify direct commits to `main` (e.g.
-   `bypass_private_pr: always`), work on `main`.
-3. Otherwise, create a feature branch.
-4. For public upstream work that should stay private, use a private working repo
-   or mirror branch and ask before exposing it publicly.
-
-Before changing branches, rebasing, stashing, or doing any operation that could
-affect unrelated work, inspect the worktree. If there are unrelated uncommitted
-changes, ask before proceeding.
 
 ## Before Git Mutations
 
@@ -81,8 +61,19 @@ Do not use destructive commands such as `git reset --hard`, `git checkout --`,
 or deleting branches unless the user explicitly requests or approves them.
 
 Before rebasing, force pushing, merging, or deleting a branch, create a local
-backup branch at the current branch tip or PR head. A backup branch is cheap and
-keeps commits reachable if a later command rewrites or removes the visible ref.
+backup branch at the current branch tip or PR head (see Backup Branches below).
+
+### Backup Branches
+
+A backup branch is cheap and keeps commits reachable if a later command rewrites
+or removes the visible ref. Create one before any operation that could lose work:
+
+```sh
+git branch backup/<name>-<YYYYMMDD-HHMMSS>
+```
+
+The merge checklist in step 2 shows the full pattern for PR heads. Do not delete
+a backup branch in the same session that created it.
 
 ## Create a New GitHub Repo
 
@@ -117,12 +108,16 @@ This enforces:
 
 ## Committing
 
+Use Conventional Commits (`type(scope): description`). See
+conventionalcommits.org for the full spec. Common types: `feat`, `fix`,
+`docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`.
+
 Stage specific files. Never use `git add -A`:
 
 ```sh
 git add path/to/file another/file
 git commit -m "$(cat <<'EOF'
-type: short summary of what and why
+feat: add login endpoint
 EOF
 )"
 ```
@@ -217,6 +212,16 @@ git rebase main
 git push --force-with-lease origin feature/my-thing  # requires user confirmation
 ```
 
+When a rebase hits conflicts:
+
+```sh
+# Resolve the conflicted files, then:
+git add <resolved-files>
+git rebase --continue
+# If the result looks wrong, abort and try a different approach:
+git rebase --abort
+```
+
 ## Merging into Main Only After Explicit Approval
 
 Never merge, push to `main`, or bypass branch protection without the user
@@ -249,7 +254,7 @@ branch protection to force a push to main.
    ```
 
 2. **Preserve the PR head.** Create a local backup branch pointing at the exact
-   PR head SHA before rebasing, refreshing, merging, or deleting anything.
+   PR head SHA (see Backup Branches above for rationale).
 
    ```sh
    git fetch origin pull/<number>/head:backup/pr-<number>-<YYYYMMDD-HHMMSS>
@@ -260,7 +265,7 @@ branch protection to force a push to main.
    Compare the backup branch SHA to `headRefOid` from `gh pr view`. Do not
    delete this backup branch during the merge session.
 
-3. **Update the PR title.** Remove any "WIP" prefix. Use a semantic commit
+3. **Update the PR title.** Remove any "WIP" prefix. Use a Conventional Commits
    message (e.g. `feat: ...`, `fix: ...`, `docs: ...`). The PR title becomes
    the squash commit message.
 
@@ -342,8 +347,8 @@ branch protection to force a push to main.
 
 If the user asks to merge and `gh pr merge` fails due to merge conflicts, resolve
 them by rebasing the feature branch onto main only after preserving the current
-PR head with a backup branch. Rebase rewrites history and any force push still
-requires explicit user confirmation.
+PR head with a backup branch (see Backup Branches above). Rebase rewrites history
+and any force push still requires explicit user confirmation.
 
 **Never disable branch protection.** The old pattern of toggling `enforce_admins`
 off/on around a direct push is a hack that breaks the PR workflow and leaves
@@ -390,6 +395,18 @@ cat > ./tmp/issue-body.md <<'EOF'
 The queries path `../db/sql/queries/` resolves incorrectly...
 EOF
 gh issue create \
-  --title "bug: description" \
+  --title "fix: description" \
   --body-file ./tmp/issue-body.md
+```
+
+## Repo Temp Directory
+
+Every repo has `./tmp/` gitignored. Write temp files to `./tmp/` (not `/tmp/`).
+This keeps temp files repo-scoped, avoids system temp collisions, and makes
+file paths relative and predictable.
+
+Ensure `.gitignore` contains:
+
+```
+tmp/
 ```
