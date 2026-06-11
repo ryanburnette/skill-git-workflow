@@ -17,15 +17,14 @@ tmp/
 
 ## Core Policy
 
-Default to feature branches and PRs. Work directly on `main` only when the user
-explicitly asks for it, or after asking and receiving clear approval.
+Default to feature branches and PRs. Work directly on `main` only when the
+user explicitly says so or the repo instructions specify it (e.g.
+`bypass_private_pr: always`).
 
 Push rules depend on the branch:
 
-- **Feature branch (PR)**: commit and push freely, including to create the branch
-  and open the PR. Each commit gets pushed.
-- **Main**: commit freely, but never push. The user controls when main gets
-  published.
+- **Feature branch**: commit and push after each logical piece of work.
+- **Main**: commit after each logical piece of work, but never push.
 - **Merge**: only with explicit user approval. Never self-merge or bypass branch
   protection.
 
@@ -50,9 +49,9 @@ a PR.
 Use this decision order:
 
 1. If the user explicitly says to work on `main`, work on `main`.
-2. If repo instructions allow direct commits to `main`, that means allowed after
-   user intent is clear, not automatic.
-3. For normal implementation sessions, create a feature branch.
+2. If repo instructions specify direct commits to `main` (e.g.
+   `bypass_private_pr: always`), work on `main`.
+3. Otherwise, create a feature branch.
 4. For public upstream work that should stay private, use a private working repo
    or mirror branch and ask before exposing it publicly.
 
@@ -130,14 +129,10 @@ EOF
 
 Commit as you go — after each logical piece of work, while the changes are
 still in context. This is more token-efficient than coming back later and
-re-reading files to reconstruct what changed. Push immediately on feature
-branches.
-
-Use concise commit messages that
+re-reading files to reconstruct what changed. Use concise commit messages that
 match the repo style.
 
-On feature branches, push after each commit. On `main`, the user handles
-`git push`.
+On feature branches, push after each commit. On `main`, never push.
 
 ## Feature Branches and WIP PRs
 
