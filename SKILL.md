@@ -197,11 +197,22 @@ git log --oneline --decorate -10
 
 Force pushes are destructive. Even with safeguards, they can cause data loss.
 
-## History: Rebase or Squash
+## History: Squash by Default, Rebase Optional, Never Merge
 
-Never merge commits. Every branch must rebase onto `main` before merging.
+Avoid merge commits. `gh pr merge --merge` produces a "Merge pull request #N"
+commit, which is generally undesirable. Prefer squash or rebase. The merge step
+takes an explicit strategy flag every time; don't rely on the GitHub default.
 
-Clean up a feature branch before merge:
+Default to squash (`gh pr merge --squash`): the PR collapses to one commit on
+`main`, so the PR title must be a semantic commit message (`feat: ...`,
+`fix: ...`, `docs: ...`) because it becomes that commit's subject.
+
+Rebase (`gh pr merge --rebase`) is the alternative, used when the branch's
+individual commits are each clean and worth preserving; then every commit message
+must be semantic, since rebase keeps them verbatim on `main`. Follow a repo's
+AGENTS.md if it specifies a strategy.
+
+Clean up a feature branch before merging either way:
 
 ```sh
 # Rebase interactively to squash/fixup noise commits
@@ -307,14 +318,17 @@ branch protection to force a push to main.
 
    Only proceed once the diff matches expectations.
 
-7. **Merge without deleting refs.** The merge strategy (squash vs rebase) is
-   project-specific. Check AGENTS.md or ask the user. Default to `--squash` if
-   unspecified.
+7. **Merge without deleting refs.** Default to `--squash`. Use `--rebase` when
+   the user requests it (or a repo's AGENTS.md specifies it). Avoid `--merge`
+   unless the user explicitly asks for it. Always pass the strategy flag
+   explicitly.
 
    ```sh
    gh pr merge <number> --squash
-   # or
+   # if the user asked for rebase:
    gh pr merge <number> --rebase
+   # rarely, if the user asked for merge:
+   gh pr merge <number> --merge
    ```
 
    Do not use `--delete-branch` in the merge command. Branch deletion is cleanup,
