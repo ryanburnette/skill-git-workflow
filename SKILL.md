@@ -106,20 +106,35 @@ This enforces:
 - Rules apply to admins too (`enforce_admins=true`)
 - No force pushes, no branch deletion
 
+## Messages and Bodies Always Go Through a File
+
+Write commit messages, PR bodies, and issue bodies to a file in `./tmp/`, then
+pass it by path. Inline `-m`/`--body` and heredocs break on the quotes,
+backticks, and `$` in YAML, code, and paths — don't try inline first.
+
+- Commit: `git commit -F ./tmp/commit-msg.txt`
+- PR body: `gh pr create --body-file ./tmp/pr-body.md` (also `gh pr edit`)
+- Issue body: `gh issue create --body-file ./tmp/issue-body.md`
+
+A one-line subject may use `git commit -m "fix: typo"`; anything longer goes
+through a file.
+
 ## Committing
 
 Use Conventional Commits (`type(scope): description`). See
 conventionalcommits.org for the full spec. Common types: `feat`, `fix`,
 `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`.
 
-Stage specific files. Never use `git add -A`:
+Stage specific files. Never use `git add -A`. Write the message to a file (see
+above) and commit with `-F`:
 
 ```sh
 git add path/to/file another/file
-git commit -m "$(cat <<'EOF'
+mkdir -p ./tmp
+cat > ./tmp/commit-msg.txt <<'EOF'
 feat: add login endpoint
 EOF
-)"
+git commit -F ./tmp/commit-msg.txt
 ```
 
 Commit as you go — after each logical piece of work, while the changes are
@@ -148,9 +163,8 @@ checklist below. Preserve the branch tip before rebasing or merging so the work
 can be recovered if GitHub, a merge command, or branch cleanup behaves
 unexpectedly.
 
-Open a draft PR after pushing the branch. Write the body to a file and use
-`--body-file` to avoid quoting issues (heredocs inside `--body` clash with
-single quotes in the content):
+Open a draft PR after pushing the branch, with the body in a file (see the file
+rule above):
 
 ```sh
 mkdir -p ./tmp
@@ -248,7 +262,7 @@ to `main` require explicit user approval.
 
 ### The safe way to merge a PR
 
-Always use `gh pr merge` -- never do local merges and push, and never disable
+Always use `gh pr merge`. Never do local merges and push, and never disable
 branch protection to force a push to main.
 
 **Pre-merge checklist.** Run these steps in order before merging:
@@ -387,19 +401,21 @@ Key reminders:
 - Read ALL comments before making any code changes
 - Ask questions if the requirements are unclear
 
-**Close issues in commit messages:**
+**Close issues from the PR body.** This skill squash-merges by default, so `main`
+gets one commit built from the PR title and body — not the feature branch's
+individual commit messages. A `Closes #6` line buried in a commit body is
+unreliable under squash; put the closing keyword in the PR body (`./tmp/pr-body.md`)
+so GitHub closes the issue when the PR merges:
 
-```sh
-git commit -m "fix: description of fix
-
-Closes #6"
+```
+Closes #6
 ```
 
-This automatically closes the issue when pushed to main.
+When a branch is instead merged with `--rebase` (commits kept verbatim on `main`),
+a `Closes #6` line in the relevant commit body works too. Either way, the keyword
+must land on `main` for GitHub to close the issue.
 
-**Create issues using `--body-file`.** Write the body to `./tmp/` and pass
-`--body-file` to `gh issue create`. This avoids quoting problems when the
-body contains single quotes (common in YAML, code blocks, or file paths):
+**Create issues with `--body-file`** (see the file rule above):
 
 ```sh
 mkdir -p ./tmp
