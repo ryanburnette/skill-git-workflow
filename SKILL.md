@@ -119,6 +119,17 @@ backticks, and `$` in YAML, code, and paths — don't try inline first.
 A one-line subject may use `git commit -m "fix: typo"`; anything longer goes
 through a file.
 
+### Never Hard-Wrap PR or Issue Bodies
+
+GitHub Flavored Markdown renders a newline inside a paragraph as a literal line
+break, so an 80-column-wrapped body becomes a ragged column of short lines.
+Write each paragraph as one unwrapped line; blank lines still separate
+paragraphs, and list items still get their own line. This covers everything
+posted to GitHub: PR and issue bodies, comments, release notes.
+
+Commit messages are the opposite — plain text, not Markdown. Subject under ~50
+characters, body wrapped at 72.
+
 ## Committing
 
 Use Conventional Commits (`type(scope): description`). See
