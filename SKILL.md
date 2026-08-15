@@ -106,18 +106,47 @@ This enforces:
 - Rules apply to admins too (`enforce_admins=true`)
 - No force pushes, no branch deletion
 
-## Messages and Bodies Always Go Through a File
+## PR, Issue, and Comment Bodies Go Through a File
 
-Write commit messages, PR bodies, and issue bodies to a file in `./tmp/`, then
-pass it by path. Inline `-m`/`--body` and heredocs break on the quotes,
-backticks, and `$` in YAML, code, and paths — don't try inline first.
+Anything posted to GitHub goes into a file in `./tmp/` and gets passed by path.
+These bodies are multi-paragraph Markdown carrying the quotes, backticks, and
+`$` found in YAML, code, and paths, and inline `--body` mangles them — don't try
+inline first.
 
-- Commit: `git commit -F ./tmp/commit-msg.txt`
 - PR body: `gh pr create --body-file ./tmp/pr-body.md` (also `gh pr edit`)
 - Issue body: `gh issue create --body-file ./tmp/issue-body.md`
+- Comment: `gh pr comment --body-file ./tmp/comment.md` (also `gh issue comment`)
 
-A one-line subject may use `git commit -m "fix: typo"`; anything longer goes
-through a file.
+Build the file with a quoted heredoc (`<<'EOF'`), which passes backticks and `$`
+through untouched. An unquoted heredoc expands them and corrupts the body.
+
+### Commit Messages Are Usually Inline
+
+A commit message is one semantic line most of the time, so `-m` is the default:
+
+```sh
+git commit -m "feat: add login endpoint"
+```
+
+A short body fits in a second `-m`; git separates the two with a blank line:
+
+```sh
+git commit -m "fix: resolve queries path from module root" \
+  -m "The relative path resolved against the caller's cwd, so tests passed but the installed binary did not."
+```
+
+Switch to a file when the message gets long or cumbersome to quote — several
+paragraphs, a bullet list, or text containing a single quote, a backtick, or `$`:
+
+```sh
+mkdir -p ./tmp
+cat > ./tmp/commit-msg.txt <<'EOF'
+fix: resolve queries path from module root
+
+The relative path `../db/sql/queries/` resolved against the caller's cwd.
+EOF
+git commit -F ./tmp/commit-msg.txt
+```
 
 ### Never Hard-Wrap PR or Issue Bodies
 
@@ -136,17 +165,15 @@ Use Conventional Commits (`type(scope): description`). See
 conventionalcommits.org for the full spec. Common types: `feat`, `fix`,
 `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`.
 
-Stage specific files. Never use `git add -A`. Write the message to a file (see
-above) and commit with `-F`:
+Stage specific files. Never use `git add -A`:
 
 ```sh
 git add path/to/file another/file
-mkdir -p ./tmp
-cat > ./tmp/commit-msg.txt <<'EOF'
-feat: add login endpoint
-EOF
-git commit -F ./tmp/commit-msg.txt
+git commit -m "feat: add login endpoint"
 ```
+
+For a long or awkward-to-quote message, write it to `./tmp/commit-msg.txt` and
+commit with `-F` (see above).
 
 Commit as you go — after each logical piece of work, while the changes are
 still in context. This is more token-efficient than coming back later and
@@ -198,6 +225,7 @@ gh pr create \
 Update the PR description as work progresses using the same pattern:
 
 ```sh
+mkdir -p ./tmp
 cat > ./tmp/pr-body.md <<'EOF'
 updated body...
 EOF
@@ -310,7 +338,11 @@ branch protection to force a push to main.
    ```
 
 4. **Update the PR body.** Make sure the description reflects the final state
-   of the work.
+   of the work. Edit it through a file, same as any other GitHub body.
+
+   ```sh
+   gh pr edit <number> --body-file ./tmp/pr-body.md
+   ```
 
 5. **Mark the PR as ready.** If the PR is still a draft:
 
