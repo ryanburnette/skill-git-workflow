@@ -90,8 +90,14 @@ gh pr ready <number>
 **6. Verify the diff.**
 
 ```sh
-gh pr view <number> --json headRefOid,commits,files
-gh pr diff <number> --stat
+gh pr view <number> --json headRefOid,commits,files \
+  --jq '{head: .headRefOid, files: [.files[] | "\(.path) +\(.additions) -\(.deletions)"]}'
+```
+
+`gh pr diff` has no `--stat`. For a diffstat, pipe the patch through git:
+
+```sh
+gh pr diff <number> --patch | git apply --stat
 ```
 
 **7. Merge.**
