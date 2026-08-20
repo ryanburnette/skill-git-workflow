@@ -183,13 +183,23 @@ fj pr merge <number> -M rebase
 fj pr merge <number> -M merge
 ```
 
-Other `-M` values this CLI accepts: `rebase-merge`, `manual`. Do not pass `-d`,
-which deletes the branch after merging.
+Other `-M` values this CLI accepts: `rebase-merge`, `manual`. Do not pass `-d`
+here. Delete the feature branch in step 9 after verification.
 
 **8. Verify after merge.**
 
 ```sh
 fj pr view <number>
+```
+
+**9. Clean up to main.** Keep the local backup. Forgejo has no Restore branch
+on the PR.
+
+```sh
+git checkout main
+git merge --ff-only origin/main
+git push origin --delete <feature-branch>
+git branch -D <feature-branch>
 ```
 
 ## Issues
