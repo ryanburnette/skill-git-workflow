@@ -20,9 +20,10 @@ Push rules depend on the branch:
   `main` all count. Then push. Do not open a PR instead, and do not ask
   again. If branch protection rejects the push, report the error; do not
   disable protection.
-- **Merge**: only with explicit user approval. Never self-merge or bypass branch
-  protection. Merge includes switching to `main` and deleting the leftover
-  feature branch.
+- **Merge**: do not merge unless the user asks. "Merge it", "land it", and
+  "clean it up to main" all count. Then merge through the forge CLI. Do not
+  ask again. Never bypass branch protection. Merge includes switching to
+  `main` and deleting the leftover feature branch.
 
 `bypass_private_pr` means commit on `main`. It is not permission to push.
 
@@ -297,8 +298,8 @@ and push to `main`. Merge a PR only after user approval.
 **For private repos:** Feature branch and PR is still the default. Direct commits
 to `main` require explicit user approval.
 
-**Never self-merge. Never bypass branch protection**, including any admin
-override flag the CLI offers.
+When the user asks to merge, merge. Do not ask again. Never bypass branch
+protection, including any admin override flag the CLI offers.
 
 ### The safe way to merge a PR
 
