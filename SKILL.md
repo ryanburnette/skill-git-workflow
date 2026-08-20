@@ -15,9 +15,15 @@ or mirror branch and ask before exposing it publicly.
 Push rules depend on the branch:
 
 - **Feature branch**: commit and push after each logical piece of work.
-- **Main**: commit after each logical piece of work, but never push.
+- **Main**: commit after each logical piece of work. Do not push unless the
+  user asks. "Commit and push", "push to main", and "push this" while on
+  `main` all count. Then push. Do not open a PR instead, and do not ask
+  again. If branch protection rejects the push, report the error; do not
+  disable protection.
 - **Merge**: only with explicit user approval. Never self-merge or bypass branch
   protection.
+
+`bypass_private_pr` means commit on `main`. It is not permission to push.
 
 Before changing branches, rebasing, stashing, or doing any operation that could
 affect unrelated work, inspect the worktree. If there are unrelated uncommitted
@@ -179,7 +185,8 @@ still in context. This is more token-efficient than coming back later and
 re-reading files to reconstruct what changed. Use concise commit messages that
 match the repo style.
 
-On feature branches, push after each commit. On `main`, never push.
+On feature branches, push after each commit. On `main`, push only when the
+user asked to push this work.
 
 ## Feature Branches and WIP PRs
 
@@ -276,9 +283,11 @@ git rebase --abort
 
 Never merge, push to `main`, or bypass branch protection without the user
 explicitly asking. This includes private repos. "git-workflow everything" means
-create or update the PR, not merge it.
+create or update the PR, not merge it. "Commit and push to main" is approval
+to push `main`. It is not approval to merge a PR or disable branch protection.
 
-**For public repos:** Follow the PR workflow. Merge only after user approval.
+**For public repos:** Follow the PR workflow unless the user asked to commit
+and push to `main`. Merge a PR only after user approval.
 
 **For private repos:** Feature branch and PR is still the default. Direct commits
 to `main` require explicit user approval.
