@@ -110,12 +110,24 @@ gh pr merge <number> --rebase
 gh pr merge <number> --merge
 ```
 
-Do not use `--delete-branch`. Never use `--admin` to bypass branch protection.
+Do not use `--delete-branch` here. Delete the branch in step 9 after
+verification. Never use `--admin` to bypass branch protection.
 
 **8. Verify after merge.**
 
 ```sh
 gh pr view <number> --json state,mergedAt,mergeCommit
+```
+
+**9. Clean up to main.** GitHub can restore the branch from the merged PR, so
+delete the local backup after verification.
+
+```sh
+git checkout main
+git merge --ff-only origin/main
+git push origin --delete <feature-branch>
+git branch -D <feature-branch>
+git branch -D backup/pr-<number>-<YYYYMMDD-HHMMSS>
 ```
 
 ## Issues

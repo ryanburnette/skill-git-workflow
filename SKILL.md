@@ -21,7 +21,8 @@ Push rules depend on the branch:
   again. If branch protection rejects the push, report the error; do not
   disable protection.
 - **Merge**: only with explicit user approval. Never self-merge or bypass branch
-  protection.
+  protection. Merge includes switching to `main` and deleting the leftover
+  feature branch.
 
 `bypass_private_pr` means commit on `main`. It is not permission to push.
 
@@ -82,8 +83,9 @@ git diff
 git diff --staged
 ```
 
-Do not use destructive commands such as `git reset --hard`, `git checkout --`,
-or deleting branches unless the user explicitly requests or approves them.
+Do not use destructive commands such as `git reset --hard` or `git checkout --`
+unless the user explicitly requests or approves them. Deleting the PR's feature
+branch after a verified merge is part of merge, not a separate ask.
 
 Before rebasing, force pushing, merging, or deleting a branch, create a local
 backup branch at the current branch tip or PR head (see Backup Branches below).
@@ -97,8 +99,11 @@ or removes the visible ref. Create one before any operation that could lose work
 git branch backup/<name>-<YYYYMMDD-HHMMSS>
 ```
 
-The merge checklist in step 2 shows the full pattern for PR heads. Do not delete
-a backup branch in the same session that created it.
+The merge checklist in step 2 shows the full pattern for PR heads.
+
+After a verified merge, drop the backup if the forge can restore the branch
+from the PR. GitHub can: the merged PR has Restore branch. Forgejo and
+unknown forges cannot: keep the backup.
 
 ## Creating a New Repo
 
@@ -326,8 +331,7 @@ commands below work anywhere; the forge commands for each numbered step are in
    git log --oneline --decorate -5 backup/pr-<number>-<YYYYMMDD-HHMMSS>
    ```
 
-   Compare the backup branch SHA to the PR head SHA reported by the forge. Do
-   not delete this backup branch during the merge session.
+   Compare the backup branch SHA to the PR head SHA reported by the forge.
 
 3. **Update the PR title.** Remove any "WIP" prefix. Use a Conventional Commits
    message (e.g. `feat: ...`, `fix: ...`, `docs: ...`). The PR title becomes
@@ -358,13 +362,12 @@ commands below work anywhere; the forge commands for each numbered step are in
 
    Only proceed once the diff matches expectations.
 
-7. **Merge without deleting refs.** Default to squash. Use rebase when the user
-   requests it (or a repo's AGENTS.md specifies it). Avoid a merge-commit merge
-   unless the user explicitly asks for it. Always pass the strategy flag
-   explicitly.
+7. **Merge.** Default to squash. Use rebase when the user requests it (or a
+   repo's AGENTS.md specifies it). Avoid a merge-commit merge unless the user
+   explicitly asks for it. Always pass the strategy flag explicitly.
 
-   Do not pass a delete-branch flag in the merge command. Branch deletion is
-   cleanup, not part of merging.
+   Do not pass a delete-branch flag in the merge command. Delete branches in
+   step 9, after verification.
 
 8. **Verify after merge.** Fetch main and verify the merge result before any
    branch cleanup.
@@ -386,9 +389,26 @@ commands below work anywhere; the forge commands for each numbered step are in
    assuming missing files are safe. For rebase merges, confirm the expected
    commits or patch are present on `origin/main`.
 
-9. **Clean up only after verification.** Delete remote or local feature branches
-   only if the user asked for cleanup and the preserved backup branch is still
-   available. Never delete the backup branch in the same session that created it.
+9. **Clean up to main.** A merge request includes this. After step 8 passes,
+   put the worktree on `main` and delete the leftover feature branch.
+
+   ```sh
+   git checkout main
+   git merge --ff-only origin/main
+   git push origin --delete <feature-branch>
+   git branch -D <feature-branch>
+   ```
+
+   After a squash, the feature-branch commit is not an ancestor of `main`, so
+   `-d` may refuse. `-D` is OK here because step 8 already verified the tree.
+
+   Do not delete unrelated branches.
+
+   Then the backup created in step 2:
+
+   - **GitHub:** delete it (`git branch -D backup/pr-<number>-...`). The merged
+     PR can restore the branch.
+   - **Forgejo or unknown:** keep it. Do not delete it in this session.
 
 If the user asks to merge and the merge fails due to conflicts, resolve them by
 rebasing the feature branch onto main only after preserving the current PR head
