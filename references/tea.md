@@ -4,8 +4,8 @@ Commands for repos on a Gitea host, using the `tea` CLI. The policy that governs
 when to run any of these is in `SKILL.md` — read that first. Placeholders:
 `<owner>`, `<name>`, `<number>`, `<gitea-host>`.
 
-Verified against tea v0.15.1. Check `tea <command> --help` if something here does
-not match your version.
+Verified end to end against tea v0.15.1 and Gitea 1.27.2. Check `tea <command>
+--help` if something here does not match your version.
 
 Install with `go install gitea.dev/tea@latest`. The module moved: the old
 `code.gitea.io/tea` path still resolves, but its highest semver tag is a stale
@@ -27,6 +27,12 @@ Extrapolating from `gh` gets each of these wrong:
 - **Nouns are plural** (`pulls`, `issues`, `comments`), though `pr`, `issue`, and
   `comment` are accepted aliases.
 - **Viewing is a bare index**, not a `view` subcommand: `tea pulls <number>`.
+- **`--fields` is silently ignored on that bare-index view.** It only applies to
+  the list forms (`tea pulls ls`). Asking for `--fields diff` on a single PR
+  prints the ordinary view and no error, so don't trust it to have filtered
+  anything.
+- **Issues and pulls share one index namespace.** PR `#1` means issue `#2` is the
+  next thing created. Do not assume separate counters.
 - **`tea repos create` does not add a remote or push.** There is no equivalent of
   `gh repo create --source . --push`; wire up `origin` yourself.
 - **No branch protection command.** Use `tea api` (see below).
@@ -34,18 +40,32 @@ Extrapolating from `gh` gets each of these wrong:
 Unlike `fj`, `tea` does have `--output json` and a real `tea api` escape hatch,
 so prefer those over scraping human-readable output.
 
+Set a default login once, or every command outside a Gitea repo prints a
+`no login matched this repository` fallback notice on stderr:
+
+```sh
+tea logins default <login-name>
+```
+
 ## Create a repo
 
 `tea repos create` only creates the remote repo. Add the remote and push
 separately:
 
 ```sh
-tea repos create --name <name> --owner <owner>
+tea repos create --name <name>
 git remote add origin git@<gitea-host>:<owner>/<name>.git
 git push -u origin main
 ```
 
-Add `--private` to make it private.
+Add `--private` to make it private. `tea repos create` prints the instance's own
+clone URL — use that rather than assembling one by hand, since an instance on a
+non-standard SSH port needs the `ssh://host:port/owner/name.git` form.
+
+Omit `--owner` to create under your own account. `--owner` targets the
+*organization* endpoint, so passing your own username fails with a bare
+`Error: not found`. `tea repos delete` is the opposite — there `--owner` is the
+plain owner and works for a user.
 
 ## Branch protection
 
@@ -136,15 +156,22 @@ tea api -X PATCH /repos/{owner}/{repo}/pulls/<number> -F body=@./tmp/pr-body.md
 
 ## Draft PRs
 
-Gitea marks drafts with a literal `WIP: ` title prefix, but `tea` wraps that in
-real flags — unlike `fj`, you do not manage the prefix by hand:
+Gitea has no separate draft flag in its data model: the API's `draft` boolean is
+derived from a literal `WIP: ` title prefix. `tea` wraps that prefix in real
+flags, so unlike `fj` you do not edit it by hand:
 
 ```sh
 tea pulls create --title "my thing" -d "$(cat ./tmp/pr-body.md)" --draft
 ```
 
-`--draft` prepends the prefix and is idempotent. `tea pulls edit <number> --ready`
-strips it. Useful flags on create: `--base <branch>`, `--head <branch>`.
+`--draft` prepends the prefix, `--ready` strips it, and both are idempotent.
+
+Because `draft` is just the prefix, **setting a title without `WIP: ` also clears
+draft status**, and setting one that keeps the prefix leaves the PR a draft. Use
+`--ready` when you mean to clear it, rather than relying on a title edit to do it
+as a side effect.
+
+Useful flags on create: `--base <branch>`, `--head <branch>`.
 
 ## Pre-merge checklist commands
 
@@ -154,7 +181,8 @@ Numbered to match the checklist in `SKILL.md`.
 
 ```sh
 tea pulls <number>
-tea pulls <number> --fields index,title,state,mergeable,base,head,url
+tea api /repos/{owner}/{repo}/pulls/<number> \
+  | jq '{number, title, state, draft, mergeable, base: .base.ref, head: .head.ref}'
 ```
 
 **2. Preserve the PR head.** Gitea serves the same `refs/pull/<number>/head`
@@ -177,8 +205,8 @@ namespace exists the first time you use it on a new host:
 git ls-remote origin 'refs/pull/*'
 ```
 
-**3. Update the PR title.** Unlike `fj`, this does not clear draft status — step
-5 is a separate action.
+**3. Update the PR title.** Dropping the `WIP: ` prefix here already clears draft
+status, since `draft` is derived from the title. Still run step 5 explicitly.
 
 ```sh
 tea pulls edit <number> --title "feat: descriptive summary"
@@ -196,11 +224,14 @@ tea pulls edit <number> -d "$(cat ./tmp/pr-body.md)"
 tea pulls edit <number> --ready
 ```
 
-**6. Verify the diff.**
+**6. Verify the diff.** `tea` has no diff subcommand: `--fields diff` on the
+bare-index view is ignored, and on `tea pulls ls` it yields the diff's URL rather
+than its content. Go through the API, which serves the raw diff at the `.diff`
+and `.patch` suffixes:
 
 ```sh
-tea pulls <number> --fields diff
-tea pulls <number> --fields patch
+tea api /repos/{owner}/{repo}/pulls/<number>.diff
+tea api /repos/{owner}/{repo}/pulls/<number>.diff | git apply --stat
 tea api /repos/{owner}/{repo}/pulls/<number>/files | jq -r '.[].filename'
 ```
 
@@ -218,10 +249,10 @@ Other `-s` values this CLI accepts: `rebase-merge`. `--title` and `--message` se
 the resulting commit's subject and body. Delete the feature branch in step 9
 after verification — do not let `tea pulls clean` do it here.
 
-**8. Verify after merge.**
+**8. Verify after merge.** `state` goes to `closed` and `merged` to `true`:
 
 ```sh
-tea pulls <number> --fields index,title,state
+tea api /repos/{owner}/{repo}/pulls/<number> | jq '{state, merged, merge_commit_sha}'
 ```
 
 **9. Clean up to main.** Keep the local backup. Gitea has no Restore branch on
