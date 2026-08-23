@@ -1,9 +1,12 @@
 # Forgejo commands (`fj`)
 
-Commands for repos on a Forgejo or Gitea host, using the `fj` CLI
-(forgejo-cli). The policy that governs when to run any of these is in `SKILL.md`
-— read that first. Placeholders: `<owner>`, `<name>`, `<number>`,
-`<forgejo-host>`.
+Commands for repos on a Forgejo host, using the `fj` CLI (forgejo-cli). The
+policy that governs when to run any of these is in `SKILL.md` — read that first.
+Placeholders: `<owner>`, `<name>`, `<number>`, `<forgejo-host>`.
+
+For a Gitea host, use `references/tea.md` instead. Forgejo is a fork of Gitea and
+the APIs still overlap, but the two CLIs do not: `fj` and `tea` differ on nearly
+every flag.
 
 Verified against fj v0.6.0. Check `fj <command> --help` if something here does
 not match your version.
