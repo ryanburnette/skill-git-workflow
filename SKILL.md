@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Branch, commit, PR, and merge policy for GitHub, Forgejo, and Gitea repos. Use when creating a repo, starting a feature branch, managing PRs, or merging into main.
+description: Branch, commit, PR, and merge policy for GitHub and Gitea repos. Use when creating a repo, starting a feature branch, managing PRs, or merging into main.
 ---
 
 ## Core Policy
@@ -42,14 +42,14 @@ git remote get-url origin
 
 - `github.com` → read `references/gh.md` for the commands
 - a Gitea host → read `references/tea.md`
-- a Forgejo host → read `references/fj.md`
+- anything else → ask which forge it runs
 
-Read only the one that matches. Forgejo is a fork of Gitea, so a remote URL alone
-cannot tell them apart — the host has to be known. Your global agent instructions
-are where that mapping lives; when they name specific hosts or say where new
-repos belong, they take precedence over any guess made from the remote. If a
-self-hosted remote is not covered there, ask which forge it runs rather than
-guessing: `fj` and `tea` are not interchangeable.
+Read only the one that matches. Forgejo is a fork of Gitea, so a remote URL
+alone cannot tell them apart — never assume `tea` for a self-hosted host until
+you know. Your global agent instructions are where that mapping lives; when
+they name specific hosts or say where new repos belong, they take precedence
+over any guess made from the remote. A Forgejo host is beyond this skill's
+references — the policy still applies, but ask how to proceed.
 
 For a new repo with no `origin` yet, those same instructions decide the forge.
 If nothing covers it, ask.
@@ -107,8 +107,8 @@ git branch backup/<name>-<YYYYMMDD-HHMMSS>
 The merge checklist in step 2 shows the full pattern for PR heads.
 
 After a verified merge, drop the backup if the forge can restore the branch
-from the PR. GitHub can: the merged PR has Restore branch. Forgejo, Gitea, and
-unknown forges cannot: keep the backup.
+from the PR. GitHub can: the merged PR has Restore branch. Gitea and unknown
+forges cannot: keep the backup.
 
 ## Creating a New Repo
 
@@ -324,8 +324,7 @@ disable branch protection to force a push to main.
 
 **Pre-merge checklist.** Run these steps in order before merging. The git
 commands below work anywhere; the forge commands for each numbered step are in
-`references/gh.md`, `references/fj.md`, or `references/tea.md` under the same
-numbers.
+`references/gh.md` or `references/tea.md` under the same numbers.
 
 1. **Inspect local and PR state.** Confirm the current branch, worktree, PR head,
    and base before changing anything.
@@ -340,8 +339,8 @@ numbers.
    Then view the PR through the forge CLI.
 
 2. **Preserve the PR head.** Create a local backup branch pointing at the exact
-   PR head SHA (see Backup Branches above for rationale). GitHub, Forgejo, and
-   Gitea all serve the PR head under `refs/pull/<number>/head`:
+   PR head SHA (see Backup Branches above for rationale). GitHub and Gitea
+   both serve the PR head under `refs/pull/<number>/head`:
 
    ```sh
    git fetch origin pull/<number>/head:backup/pr-<number>-<YYYYMMDD-HHMMSS>
@@ -426,7 +425,7 @@ numbers.
 
    - **GitHub:** delete it (`git branch -D backup/pr-<number>-...`). The merged
      PR can restore the branch.
-   - **Forgejo, Gitea, or unknown:** keep it. Do not delete it in this session.
+   - **Gitea or unknown:** keep it. Do not delete it in this session.
 
 If the user asks to merge and the merge fails due to conflicts, resolve them by
 rebasing the feature branch onto main only after preserving the current PR head
