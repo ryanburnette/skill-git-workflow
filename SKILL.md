@@ -122,59 +122,68 @@ not as later cleanup. Every forge should end up enforcing:
 - Rules apply to admins too
 - No force pushes, no branch deletion
 
-## PR, Issue, and Comment Bodies Go Through a File
+## Commit Messages and Forge Bodies
 
-Anything posted to a forge goes into a file in `./tmp/` and gets passed by path.
-These bodies are multi-paragraph Markdown carrying the quotes, backticks, and
-`$` found in YAML, code, and paths, and inline `--body` mangles them — don't try
-inline first.
+### Commit Messages
 
-The file is the rule; the flag that consumes it varies. `gh` and `fj` take
-`--body-file` on PR create, PR edit, issue create, and comment commands. `tea`
-has no such flag and reads the file into a string flag instead. Either way the
-body is authored in a file first. See the reference file for exact syntax.
-
-Build the file with a quoted heredoc (`<<'EOF'`), which passes backticks and `$`
-through untouched. An unquoted heredoc expands them and corrupts the body.
-
-### Commit Messages Are Usually Inline
-
-A commit message is one semantic line most of the time, so `-m` is the default:
+A one-line message is an argument to `-m`:
 
 ```sh
 git commit -m "feat: add login endpoint"
 ```
 
-A short body fits in a second `-m`; git separates the two with a blank line:
+An apostrophe in a subject is fine: the argument is double-quoted, and `'`
+is literal there.
 
-```sh
-git commit -m "fix: resolve queries path from module root" \
-  -m "The relative path resolved against the caller's cwd, so tests passed but the installed binary did not."
-```
-
-Switch to a file when the message gets long or cumbersome to quote — several
-paragraphs, a bullet list, or text containing a single quote, a backtick, or `$`:
+A message that has a body goes in a file under `./tmp/` and is committed
+with `-F`. Build the file with a quoted heredoc (`<<'EOF'`), so backticks
+and `$` in the body are not expanded; an unquoted heredoc corrupts the
+message. Commit messages are plain text, not Markdown: subject under ~50
+characters, body wrapped at 72.
 
 ```sh
 mkdir -p ./tmp
 cat > ./tmp/commit-msg.txt <<'EOF'
 fix: resolve queries path from module root
 
-The relative path `../db/sql/queries/` resolved against the caller's cwd.
+The relative path `../db/sql/queries/` resolved against the caller's cwd,
+so tests passed but the installed binary did not.
 EOF
 git commit -F ./tmp/commit-msg.txt
 ```
 
-### Never Hard-Wrap PR or Issue Bodies
+### Forge Bodies
 
-Forge Markdown renders a newline inside a paragraph as a literal line break, so
-an 80-column-wrapped body becomes a ragged column of short lines. This is true of
-every forge covered here. Write each paragraph as one unwrapped line; blank lines
-still separate paragraphs, and list items still get their own line. This covers
-everything posted to a forge: PR and issue bodies, comments, release notes.
+PR and issue bodies, comments, and release notes always go through a file in
+`./tmp/`, passed by path. The reference file has the file flag for each
+command; where a command has no file flag, it shows the `$(cat ./tmp/...)`
+form.
 
-Commit messages are the opposite — plain text, not Markdown. Subject under ~50
-characters, body wrapped at 72.
+Build the file with a quoted heredoc (`<<'EOF'`), so backticks and `$` are
+not expanded. An unquoted heredoc corrupts the body:
+
+```sh
+mkdir -p ./tmp
+cat > ./tmp/pr-body.md <<'EOF'
+## What
+
+The relative path `../db/sql/queries/` resolved against the caller's cwd.
+EOF
+```
+
+Do not try the body inline first. A body is where code, paths, and quotes
+live, and an inline `--body "..."` lets the shell expand `$` — and run
+backticks as commands. A mangled body is posted to the forge, visible to
+humans, and costs an edit to fix; the file is a few tokens.
+
+### Never hard-wrap a forge body
+
+Forge Markdown turns a newline inside a paragraph into a visible line break,
+so an 80-column wrap becomes a ragged column in the UI. The wrap is in the
+text you author, including the heredoc: each paragraph has to be one physical
+line in the file. Blank lines still separate paragraphs. A list item, a
+heading, and a table row each get their own line, and those lines are not
+wrapped either. This covers PR and issue bodies, comments, and release notes.
 
 ## Committing
 
@@ -189,8 +198,8 @@ git add path/to/file another/file
 git commit -m "feat: add login endpoint"
 ```
 
-For a long or awkward-to-quote message, write it to `./tmp/commit-msg.txt` and
-commit with `-F` (see above).
+A message with a body goes in `./tmp/commit-msg.txt` and is committed with
+`-F` (see Commit Messages and Forge Bodies above).
 
 Commit as you go — after each logical piece of work, while the changes are
 still in context. This is more token-efficient than coming back later and
@@ -214,8 +223,7 @@ checklist below. Preserve the branch tip before rebasing or merging so the work
 can be recovered if the forge, a merge command, or branch cleanup behaves
 unexpectedly.
 
-Open a draft PR after pushing the branch, with the body in a file (see the file
-rule above):
+Open a draft PR after pushing the branch. The body goes in a file:
 
 ```sh
 mkdir -p ./tmp
@@ -348,7 +356,7 @@ numbers.
    the squash commit message.
 
 4. **Update the PR body.** Make sure the description reflects the final state
-   of the work. Edit it through a file, same as any other forge body.
+   of the work. The body goes through a file, like any other forge body.
 
 5. **Mark the PR as ready** if it is still a draft. On some forges this is the
    same action as step 3.
@@ -453,8 +461,8 @@ When a branch is instead merged with rebase (commits kept verbatim on `main`), a
 `Closes #6` line in the relevant commit body works too. Either way, the keyword
 must land on `main` for the forge to close the issue.
 
-**Create issues with `--body-file`**, same as any other body (see the file rule
-above):
+**Create an issue with the body in a file**, like any other forge body (see
+Commit Messages and Forge Bodies above):
 
 ```sh
 mkdir -p ./tmp
