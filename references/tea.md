@@ -4,8 +4,9 @@ Commands for repos on a Gitea host, using the `tea` CLI. The policy that governs
 when to run any of these is in `SKILL.md` — read that first. Placeholders:
 `<owner>`, `<name>`, `<number>`, `<gitea-host>`.
 
-Verified end to end against tea v0.15.1 and Gitea 1.27.2. Check `tea <command>
---help` if something here does not match your version.
+Verified end to end against tea v0.15.1 and Gitea 1.27.2.
+`--description-file` is the exception: it arrived in v0.16.0. Check
+`tea <command> --help` if something here does not match your version.
 
 Install with `go install gitea.dev/tea@latest`. The module moved: the old
 `code.gitea.io/tea` path still resolves, but its highest semver tag is a stale
@@ -17,9 +18,8 @@ installs a 2019 build that reports `0.1.0-dev` and has no `pulls create`. Use
 
 Extrapolating from `gh` gets each of these wrong:
 
-- **No `--body-file` anywhere.** Every body flag is `--description`/`-d` and
-  takes a string, on `pulls create`, `pulls edit`, `issues create`, and
-  `comments`. See Bodies through a file below for how to keep the file rule.
+- **The body flag is `--description`/`-d`, not `--body`.** There is no
+  `--body-file`. The file form is in Bodies through a file.
 - **`--description` is the body**, not the repo description, on issues and pulls.
   On `repos create` the body-ish flag is `--desc`.
 - **Merge defaults to a merge commit.** `tea pulls merge` with no `--style` makes
@@ -136,15 +136,32 @@ there against your version rather than trusting the bodies above blindly.
 
 ## Bodies through a file
 
-`tea` has no `--body-file`, so read the file into the flag. Command substitution
-does not re-expand the file's contents, so backticks and `$` survive intact and
-the quoted-heredoc rule in `SKILL.md` still applies:
+Forge bodies always go through a file (see `SKILL.md`). On tea v0.16 and
+later, issue and PR create and edit take `--description-file`:
+
+```sh
+tea pulls create --title "title" --description-file ./tmp/pr-body.md
+tea pulls edit <number> --description-file ./tmp/pr-body.md
+tea issues create --title "title" --description-file ./tmp/issue-body.md
+```
+
+`comments add` has no file flag on any version, and v0.15.1 has none on any
+command. There, read the file into `-d`. Command substitution does not
+re-expand the file's contents, so backticks and `$` survive, and the
+quoted-heredoc rule in `SKILL.md` still applies:
 
 ```sh
 tea pulls create --title "title" -d "$(cat ./tmp/pr-body.md)"
 tea pulls edit <number> -d "$(cat ./tmp/pr-body.md)"
 tea issues create --title "title" -d "$(cat ./tmp/issue-body.md)"
 tea comments add <number> -d "$(cat ./tmp/comment.md)"
+```
+
+Release notes take `--note-file` (which wins if `--note` is set too). Both
+flags exist on v0.15.1:
+
+```sh
+tea releases create <tag> --note-file ./tmp/release-notes.md
 ```
 
 For a very long body, or to avoid the shell entirely, go through `tea api` with

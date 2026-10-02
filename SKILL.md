@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Branch, commit, PR, and merge policy for GitHub, Forgejo, and Gitea repos. Use when creating a repo, starting a feature branch, managing PRs, or merging into main.
+description: Branch, commit, PR, and merge policy for GitHub and Gitea repos. Use when creating a repo, starting a feature branch, managing PRs, or merging into main.
 ---
 
 ## Core Policy
@@ -42,14 +42,14 @@ git remote get-url origin
 
 - `github.com` → read `references/gh.md` for the commands
 - a Gitea host → read `references/tea.md`
-- a Forgejo host → read `references/fj.md`
+- anything else → ask which forge it runs
 
-Read only the one that matches. Forgejo is a fork of Gitea, so a remote URL alone
-cannot tell them apart — the host has to be known. Your global agent instructions
-are where that mapping lives; when they name specific hosts or say where new
-repos belong, they take precedence over any guess made from the remote. If a
-self-hosted remote is not covered there, ask which forge it runs rather than
-guessing: `fj` and `tea` are not interchangeable.
+Read only the one that matches. Forgejo is a fork of Gitea, so a remote URL
+alone cannot tell them apart — never assume `tea` for a self-hosted host until
+you know. Your global agent instructions are where that mapping lives; when
+they name specific hosts or say where new repos belong, they take precedence
+over any guess made from the remote. A Forgejo host is beyond this skill's
+references — the policy still applies, but ask how to proceed.
 
 For a new repo with no `origin` yet, those same instructions decide the forge.
 If nothing covers it, ask.
@@ -107,8 +107,8 @@ git branch backup/<name>-<YYYYMMDD-HHMMSS>
 The merge checklist in step 2 shows the full pattern for PR heads.
 
 After a verified merge, drop the backup if the forge can restore the branch
-from the PR. GitHub can: the merged PR has Restore branch. Forgejo, Gitea, and
-unknown forges cannot: keep the backup.
+from the PR. GitHub can: the merged PR has Restore branch. Gitea and unknown
+forges cannot: keep the backup.
 
 ## Creating a New Repo
 
@@ -122,59 +122,68 @@ not as later cleanup. Every forge should end up enforcing:
 - Rules apply to admins too
 - No force pushes, no branch deletion
 
-## PR, Issue, and Comment Bodies Go Through a File
+## Commit Messages and Forge Bodies
 
-Anything posted to a forge goes into a file in `./tmp/` and gets passed by path.
-These bodies are multi-paragraph Markdown carrying the quotes, backticks, and
-`$` found in YAML, code, and paths, and inline `--body` mangles them — don't try
-inline first.
+### Commit Messages
 
-The file is the rule; the flag that consumes it varies. `gh` and `fj` take
-`--body-file` on PR create, PR edit, issue create, and comment commands. `tea`
-has no such flag and reads the file into a string flag instead. Either way the
-body is authored in a file first. See the reference file for exact syntax.
-
-Build the file with a quoted heredoc (`<<'EOF'`), which passes backticks and `$`
-through untouched. An unquoted heredoc expands them and corrupts the body.
-
-### Commit Messages Are Usually Inline
-
-A commit message is one semantic line most of the time, so `-m` is the default:
+A one-line message is an argument to `-m`:
 
 ```sh
 git commit -m "feat: add login endpoint"
 ```
 
-A short body fits in a second `-m`; git separates the two with a blank line:
+An apostrophe in a subject is fine: the argument is double-quoted, and `'`
+is literal there.
 
-```sh
-git commit -m "fix: resolve queries path from module root" \
-  -m "The relative path resolved against the caller's cwd, so tests passed but the installed binary did not."
-```
-
-Switch to a file when the message gets long or cumbersome to quote — several
-paragraphs, a bullet list, or text containing a single quote, a backtick, or `$`:
+A message that has a body goes in a file under `./tmp/` and is committed
+with `-F`. Build the file with a quoted heredoc (`<<'EOF'`), so backticks
+and `$` in the body are not expanded; an unquoted heredoc corrupts the
+message. Commit messages are plain text, not Markdown: subject under ~50
+characters, body wrapped at 72.
 
 ```sh
 mkdir -p ./tmp
 cat > ./tmp/commit-msg.txt <<'EOF'
 fix: resolve queries path from module root
 
-The relative path `../db/sql/queries/` resolved against the caller's cwd.
+The relative path `../db/sql/queries/` resolved against the caller's cwd,
+so tests passed but the installed binary did not.
 EOF
 git commit -F ./tmp/commit-msg.txt
 ```
 
-### Never Hard-Wrap PR or Issue Bodies
+### Forge Bodies
 
-Forge Markdown renders a newline inside a paragraph as a literal line break, so
-an 80-column-wrapped body becomes a ragged column of short lines. This is true of
-every forge covered here. Write each paragraph as one unwrapped line; blank lines
-still separate paragraphs, and list items still get their own line. This covers
-everything posted to a forge: PR and issue bodies, comments, release notes.
+PR and issue bodies, comments, and release notes always go through a file in
+`./tmp/`, passed by path. The reference file has the file flag for each
+command; where a command has no file flag, it shows the `$(cat ./tmp/...)`
+form.
 
-Commit messages are the opposite — plain text, not Markdown. Subject under ~50
-characters, body wrapped at 72.
+Build the file with a quoted heredoc (`<<'EOF'`), so backticks and `$` are
+not expanded. An unquoted heredoc corrupts the body:
+
+```sh
+mkdir -p ./tmp
+cat > ./tmp/pr-body.md <<'EOF'
+## What
+
+The relative path `../db/sql/queries/` resolved against the caller's cwd.
+EOF
+```
+
+Do not try the body inline first. A body is where code, paths, and quotes
+live, and an inline `--body "..."` lets the shell expand `$` — and run
+backticks as commands. A mangled body is posted to the forge, visible to
+humans, and costs an edit to fix; the file is a few tokens.
+
+### Never hard-wrap a forge body
+
+Forge Markdown turns a newline inside a paragraph into a visible line break,
+so an 80-column wrap becomes a ragged column in the UI. The wrap is in the
+text you author, including the heredoc: each paragraph has to be one physical
+line in the file. Blank lines still separate paragraphs. A list item, a
+heading, and a table row each get their own line, and those lines are not
+wrapped either. This covers PR and issue bodies, comments, and release notes.
 
 ## Committing
 
@@ -189,8 +198,8 @@ git add path/to/file another/file
 git commit -m "feat: add login endpoint"
 ```
 
-For a long or awkward-to-quote message, write it to `./tmp/commit-msg.txt` and
-commit with `-F` (see above).
+A message with a body goes in `./tmp/commit-msg.txt` and is committed with
+`-F` (see Commit Messages and Forge Bodies above).
 
 Commit as you go — after each logical piece of work, while the changes are
 still in context. This is more token-efficient than coming back later and
@@ -214,8 +223,7 @@ checklist below. Preserve the branch tip before rebasing or merging so the work
 can be recovered if the forge, a merge command, or branch cleanup behaves
 unexpectedly.
 
-Open a draft PR after pushing the branch, with the body in a file (see the file
-rule above):
+Open a draft PR after pushing the branch. The body goes in a file:
 
 ```sh
 mkdir -p ./tmp
@@ -316,8 +324,7 @@ disable branch protection to force a push to main.
 
 **Pre-merge checklist.** Run these steps in order before merging. The git
 commands below work anywhere; the forge commands for each numbered step are in
-`references/gh.md`, `references/fj.md`, or `references/tea.md` under the same
-numbers.
+`references/gh.md` or `references/tea.md` under the same numbers.
 
 1. **Inspect local and PR state.** Confirm the current branch, worktree, PR head,
    and base before changing anything.
@@ -332,8 +339,8 @@ numbers.
    Then view the PR through the forge CLI.
 
 2. **Preserve the PR head.** Create a local backup branch pointing at the exact
-   PR head SHA (see Backup Branches above for rationale). GitHub, Forgejo, and
-   Gitea all serve the PR head under `refs/pull/<number>/head`:
+   PR head SHA (see Backup Branches above for rationale). GitHub and Gitea
+   both serve the PR head under `refs/pull/<number>/head`:
 
    ```sh
    git fetch origin pull/<number>/head:backup/pr-<number>-<YYYYMMDD-HHMMSS>
@@ -348,7 +355,7 @@ numbers.
    the squash commit message.
 
 4. **Update the PR body.** Make sure the description reflects the final state
-   of the work. Edit it through a file, same as any other forge body.
+   of the work. The body goes through a file, like any other forge body.
 
 5. **Mark the PR as ready** if it is still a draft. On some forges this is the
    same action as step 3.
@@ -418,7 +425,7 @@ numbers.
 
    - **GitHub:** delete it (`git branch -D backup/pr-<number>-...`). The merged
      PR can restore the branch.
-   - **Forgejo, Gitea, or unknown:** keep it. Do not delete it in this session.
+   - **Gitea or unknown:** keep it. Do not delete it in this session.
 
 If the user asks to merge and the merge fails due to conflicts, resolve them by
 rebasing the feature branch onto main only after preserving the current PR head
@@ -453,8 +460,8 @@ When a branch is instead merged with rebase (commits kept verbatim on `main`), a
 `Closes #6` line in the relevant commit body works too. Either way, the keyword
 must land on `main` for the forge to close the issue.
 
-**Create issues with `--body-file`**, same as any other body (see the file rule
-above):
+**Create an issue with the body in a file**, like any other forge body (see
+Commit Messages and Forge Bodies above):
 
 ```sh
 mkdir -p ./tmp

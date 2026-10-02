@@ -37,12 +37,30 @@ admins included, no force pushes or deletions.
 
 ## Bodies through a file
 
+Forge bodies always go through a file (see `SKILL.md`). Create, edit, and
+comment take `--body-file`:
+
 ```sh
 gh pr create --body-file ./tmp/pr-body.md
 gh pr edit <number> --body-file ./tmp/pr-body.md
 gh issue create --body-file ./tmp/issue-body.md
 gh pr comment <number> --body-file ./tmp/comment.md
 gh issue comment <number> --body-file ./tmp/comment.md
+```
+
+Close takes `--comment`, which has no file form. Read the file into it;
+command substitution does not re-expand the file's contents, so backticks
+and `$` survive:
+
+```sh
+gh issue close <number> --comment "$(cat ./tmp/comment.md)"
+gh pr close <number> --comment "$(cat ./tmp/comment.md)"
+```
+
+Release notes take `--notes-file`:
+
+```sh
+gh release create <tag> --notes-file ./tmp/release-notes.md
 ```
 
 ## Draft PRs
