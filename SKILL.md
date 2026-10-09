@@ -67,8 +67,14 @@ A fork is usually as public as its upstream — on GitHub, everything in a fork
 network is visible. If the user asks for a "private fork" of a public repo,
 clarify whether they mean a private mirror or a detached private working repo.
 
-If repo visibility or desired exposure is unclear, ask before pushing or opening
-a PR.
+If repo visibility or desired exposure is unclear, ask before pushing or opening a PR.
+
+Public issues, PRs, commit messages, and branch names are as public as the
+repo. They are the right way to update a public repo, but the text still has
+to be something that can sit on the public internet. Never include personal
+details, private infrastructure, private URLs, private account identifiers, or
+anything that could identify a private life or private systems. If the change
+needs those facts, use a private repo or ask.
 
 ## Before Git Mutations
 
