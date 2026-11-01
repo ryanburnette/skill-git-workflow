@@ -89,8 +89,14 @@ git diff --staged
 ```
 
 Do not use destructive commands such as `git reset --hard` or `git checkout --`
-unless the user explicitly requests or approves them. Deleting the PR's feature
-branch after a verified merge is part of merge, not a separate ask.
+unless the user explicitly requests or approves them. A refused fast-forward is
+a stop, including `refusing to merge unrelated histories` after a forced update.
+Report the local tip, the remote tip, and that a fast-forward is impossible. A
+request to pull is not approval to reset the branch onto origin. Deleting the
+PR's feature branch after a verified merge is part of merge, not a separate ask.
+
+If the tracking branch is already current and the new commits are only on
+another branch, say that. Do not check that branch out or merge it unless asked.
 
 Before rebasing, force pushing, merging, or deleting a branch, create a local
 backup branch at the current branch tip or PR head (see Backup Branches below).
@@ -115,7 +121,9 @@ forges cannot: keep the backup.
 Only create and push a new repo when the user explicitly asks.
 
 After the first push to `main`, apply branch protection — as part of creation,
-not as later cleanup. Every forge should end up enforcing:
+not as later cleanup, unless the repo charter says work directly on `main`.
+PR-required protection makes that workflow impossible. Do not apply it there.
+Otherwise every forge should end up enforcing:
 
 - PR required before any merge to `main`
 - Linear history: no merge commits; rebase or squash only
