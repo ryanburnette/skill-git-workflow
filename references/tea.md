@@ -65,15 +65,32 @@ non-standard SSH port needs the `ssh://host:port/owner/name.git` form.
 Omit `--owner` to create under the login user. `--owner` targets the
 *organization* endpoint, so passing the login username fails with a bare
 `Error: not found`. When the user's instructions name an org for personal
-repos, pass that org. Create the org first if it does not exist. `tea repos
-delete` is the opposite — there `--owner` is the plain owner and works for a
-user.
+repos, pass that org. `tea repos delete` is the opposite — there `--owner` is
+the plain owner and works for a user.
 
-Transfer into an org with `POST /repos/{owner}/{repo}/transfer` and
-`{"new_owner":"<org>"}`. Do not pass `team_ids` for a team that already
-includes every repo (`includes_all_repositories`). The insert collides on
-`team_repo`, and that error does not mean the transfer failed. Re-read
-`/repos/<org>/<name>` before creating a second copy.
+## Organizations
+
+Create the org before the first repo that needs it:
+
+```sh
+tea organizations list
+tea organizations create <org>
+```
+
+Transfer an existing repo into an org:
+
+```sh
+tea api -X POST /repos/{owner}/{repo}/transfer -d '{"new_owner":"<org>"}'
+```
+
+Do not pass `team_ids` for a team that already includes every repo
+(`includes_all_repositories`). The insert collides on `team_repo`, and that
+error does not mean the transfer failed. Re-read the repo before creating a
+second copy:
+
+```sh
+tea api /repos/<org>/<name> | jq '{full_name, owner: .owner.login}'
+```
 
 ## Branch protection
 
