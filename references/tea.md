@@ -37,8 +37,7 @@ Extrapolating from `gh` gets each of these wrong:
   `gh repo create --source . --push`; wire up `origin` yourself.
 - **No branch protection command.** Use `tea api` (see below).
 
-Unlike `fj`, `tea` does have `--output json` and a real `tea api` escape hatch,
-so prefer those over scraping human-readable output.
+Use `--output json` or `tea api` for machine-readable output.
 
 Set a default login once, or every command outside a Gitea repo prints a
 `no login matched this repository` fallback notice on stderr:
@@ -199,8 +198,8 @@ tea api -X PATCH /repos/{owner}/{repo}/pulls/<number> -F body=@./tmp/pr-body.md
 ## Draft PRs
 
 Gitea has no separate draft flag in its data model: the API's `draft` boolean is
-derived from a literal `WIP: ` title prefix. `tea` wraps that prefix in real
-flags, so unlike `fj` you do not edit it by hand:
+derived from a literal `WIP: ` title prefix. Use `tea`'s draft flags to manage
+that prefix.
 
 ```sh
 tea pulls create --title "my thing" -d "$(cat ./tmp/pr-body.md)" --draft

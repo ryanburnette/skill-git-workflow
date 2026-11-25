@@ -8,7 +8,7 @@ This is an [Agent Skills](https://agentskills.io/) compatible skill. Load it wit
 
 The policy applies to any forge; only the CLI differs. `SKILL.md` checks `git remote get-url origin` and pulls in exactly one reference file, so a GitHub repo never loads Gitea commands into context and vice versa.
 
-Forgejo is a fork of Gitea, so a remote URL cannot distinguish the two. `SKILL.md` defers to your global agent instructions for the host-to-forge mapping and covers no CLI for a Forgejo host.
+`SKILL.md` uses your global agent instructions to identify the forge for self-hosted repos.
 
 ## Structure
 

@@ -44,12 +44,8 @@ git remote get-url origin
 - a Gitea host → read `references/tea.md`
 - anything else → ask which forge it runs
 
-Read only the one that matches. Forgejo is a fork of Gitea, so a remote URL
-alone cannot tell them apart — never assume `tea` for a self-hosted host until
-you know. Your global agent instructions are where that mapping lives; when
-they name specific hosts or say where new repos belong, they take precedence
-over any guess made from the remote. A Forgejo host is beyond this skill's
-references — the policy still applies, but ask how to proceed.
+Use the host-to-forge mapping in your global agent instructions. For an
+unlisted host, ask which forge it runs before choosing a CLI.
 
 For a new repo with no `origin` yet, those same instructions decide the forge.
 If nothing covers it, ask.
